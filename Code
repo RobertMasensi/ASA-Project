@@ -1,0 +1,266 @@
+Step 1) Data Extraction: 
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from zipfile import ZipFile
+import os
+%matplotlib inline
+## Creating a filepath object to be able to extract the various csv files from the zipped folder.
+path = "C:/Users/rmmas/Downloads/ASA_Data_Engineering_Challenge.zip"
+
+zip_file = ZipFile(path)
+## Storing the dataframes to a dictionnary as keys within the dictionary which will then be mapped to their specific file name
+dfs = {text_file.filename: pd.read_csv(zip_file.open(text_file.filename))
+       for text_file in zip_file.infolist()
+       if text_file.filename.endswith('.csv')}
+#3 Creating an empty list to append all of the dictionary dataframe objects to an empty list
+total = [ ]
+
+## Iterating through the dictionary and appending the dataframe to the list for us to then map to the specific dataframe object as dictionary key items.
+for i in dfs:
+    total.append(i)
+## Storing each dataframe to its respective list object from the "total" list
+A = dfs[total[0]]
+B= dfs[total[1]]
+C= dfs[total[2]]
+D= dfs[total[3]]
+
+Step 2 Data Noramlization
+## Capitalizing all column headers within the dataframes to have consistency among the column headers.
+
+A.columns = A.columns.str.capitalize()
+B.columns = B.columns.str.capitalize()
+C.columns = C.columns.str.capitalize()
+D.columns = D.columns.str.capitalize()
+
+
+## Checking to see which columns have the same names across all of the dataframes
+## Storing all dataframes to a list called "dataframes" so that we can loop through it later on
+dataframes = [A,B,C,D]
+
+## Looping through the "dataframes" list object to ensure that our data normalization is on its proper course
+
+common_columns = set(dataframes[0].columns)
+common_columns
+for df in dataframes[1:]:
+    common_columns = common_columns.intersection(df.columns)
+
+print(f"Common columns across DataFrames: {list(common_columns)}")
+## Beginning to rename our columns dataframe by dataframe
+
+A.rename(columns = {'Ethnic_group':'Ethnicity','Sex':'Gender','Programtrack':'Program_track'
+                    ,'School':'School_name','Testscore':'Test_score'
+                    ,'Start_date':'Enrollment_date'}, inplace=True)
+
+B.rename(columns = {'Studentid':'Student_id'
+                   ,'Race':'Ethnicity','Testscore':'Test_score'
+                   ,'Start_date':'Enrollment_date'}).head(1).columns.sort_values()
+
+C.rename(columns = {'Id':'Student_id' ,'School':'School_name'
+                     ,'Enrollmentdate':'Enrollment_date','Sex':'Gender'
+                    ,'Testscore':'Test_score','Programname':'Program_name'
+                    ,'Afterschool':'After_school'}).head(1).columns.sort_values()
+
+D.rename(columns = {'Program':'Program_name','Race':'Ethnicity'
+                   ,"Has_internet":"Internet_access", "Startdate":"Start_date"}).head(1).columns.sort_values()
+
+## Removing the Unnecessary column named "Unnecessary_column" 
+del D['Unnecessary_column']
+
+## Next we will capitalize the specific column data elements to ensure standardization across the board.
+## We will need to create a function to help us apply lambda expressions to them as we see fit
+
+def capitalize_str(string):
+    return string.capitalize()
+
+# Let's capitalize all fields that need capitalize starting with Student_id's, Ethnicities, Preferred_device
+
+A["Student_id"]=A["Student_id"].apply(lambda x:capitalize_str(x))
+B['Student_id']=B['Student_id'].apply(lambda x:capitalize_str(x))
+C["Student_id"]=C["Student_id"].apply(lambda x:capitalize_str(x))
+D["Student_id"]=D["Student_id"].apply(lambda x:capitalize_str(x))
+
+# Let's capitalize all fields that need capitalize starting with Student_id's, Ethnicities, Preferred_device
+
+A["Ethnicity"]=A["Ethnicity"].apply(lambda x:capitalize_str(x) if pd.notnull(x) else x)
+B["Ethnicity"]=B["Ethnicity"].apply(lambda x:capitalize_str(x) if pd.notnull(x) else x)
+C["Ethnicity"]=C["Ethnicity"].apply(lambda x:capitalize_str(x) if pd.notnull(x) else x)
+D["Ethnicity"]=D["Ethnicity"].apply(lambda x:capitalize_str(x) if pd.notnull(x) else x)
+
+# Let's do the same for the Internet_access field
+
+D["Internet_access"] = D["Internet_access"].apply(lambda x:capitalize_str(x) if pd.notnull(x) else x)
+
+# Let's do the same for the Preferred_device field
+
+D['Preferred_device']=D['Preferred_device'].apply(lambda x:capitalize_str(x) if pd.notnull(x) else x)
+
+## Let's standardize all gender fields and also account for null values
+
+def genderize(string):
+    if string.lower()=='f':
+        return 'Female'
+    elif string.lower()=='m':
+        return "Male"
+    elif string.lower()=='other':
+        return 'Other'
+    else:
+        return string.capitalize()
+
+## Applying the above function yields:
+A["Gender"]=A["Gender"].apply(lambda x:genderize(x) if pd.notnull(x) else x)
+B['Gender']=B['Gender'].apply(lambda x:genderize(x) if pd.notnull(x) else x)
+C['Gender']=C['Gender'].apply(lambda x:genderize(x) if pd.notnull(x) else x)
+D['Gender']=D['Gender'].apply(lambda x:genderize(x) if pd.notnull(x) else x)
+
+## Seeing that student have the same Student_id but they are not from the same school:
+sim = [x for x in A["Student_id"] for y in B["Student_id"] if x in y]
+## This would imply, through a SQL join, that a student can have two same id's but be two entirely different entities. Which is impossible.
+## This means that each school utilizes the same Student_id convention but our engineering team has to work through this.
+
+## Adding a letter referencing to each school's name. 
+## Ex: Since "A" Dataframe refers to "Kennedy" we will add a lowercase "k" for each Student_id.
+A['Student_id']=A['Student_id'].apply(lambda x:x+''+'k')
+B['Student_id']=B['Student_id'].apply(lambda x:x+''+'l')
+C["Student_id"]=C["Student_id"].apply(lambda x:x+''+'r')
+D['Student_id']=D['Student_id'].apply(lambda x:x+''+'j')
+
+Step 3) Data Cleaning
+##All Enrollment_date fields are string: we need to have them be timestamps for reformatting.
+type(A["Enrollment_date"].iloc[0])
+
+## Converting them to timestamps, which will all follow the same format by default
+A['Enrollment_date']=pd.to_datetime(A['Enrollment_date'])
+B['Enrollment_date']=pd.to_datetime(B['Enrollment_date'])
+C['Enrollment_date']=pd.to_datetime(C['Enrollment_date'])
+D['Enrollment_date']=pd.to_datetime(D['Enrollment_date'])
+
+# All Enrollment_date fields are now properly setup in the right data types for us to standardize them across the dataframes
+A["Enrollment_date"].iloc[0]
+
+# Let's check the Gpa and Tes Score columns to ensure that we have numeric/float values and not strings:
+A['Gpa'].mean()
+A['Test_score'].mean()
+
+## The numbers return values. So we are clear.
+
+
+## Took the scientific liberty to map Program_id's to a specific program as the schools share the same features but only 1 had program_id. This will facilitate joining the data in Snowflake.
+def program(string):
+    if 'stem' in string.lower():
+        return "P001"
+    elif 'financial' in string.lower():
+        return "P002"
+    else:
+        return "P003"
+A['Program_id']=A['Program_name'].apply(lambda x:program(x))
+D['Program_id']=D['Program_name'].apply(lambda x:program(x))
+C['Program_id']=C['Program_name'].apply(lambda x:program(x))
+
+## Did the same for Jefferson School as it contained only "Program_id"
+def program_id(string):
+    if string =='P001':
+        return "Stem workshop"
+    elif string =="P002":
+        return "Financial literacy"
+    else:
+        return "Career exploration"
+## Now let's reshape the "Guardian_income" field for Jefferson:
+def income(string):
+    if string == '30k-60k':
+        return "$30k-$60k"
+    elif string == '60k-100k':
+        return "$60k-$100k"
+    elif string == '<30k':
+        return '<$30k'
+    else:
+        return ">$100k"
+## Applying it to the "Guardian_income" field yields the following:
+D["Guardian_income"]=D["Guardian_income"].apply(lambda x:income(x) if pd.notnull(x) else(x))
+
+## Let's rename each dataframe according to their school
+Ken = A
+Linc = B
+Roos = C
+Jeff = D
+
+Step 4) Snowflake Connection
+## Calling/importing the Snowflake collector and write_pandas libraries 
+from snowflake.connector.pandas_tools import write_pandas
+import snowflake.connector
+## Storing my user_name and password to variables to recall them later on upon execution of my pipeline ingestion
+
+user_name = ###########
+password = #############
+
+## Let's create the database but first let's connect to our Snowflake instance
+conn = snowflake.connector.connect(
+        user=user_name,
+        password=password
+        account="dykdcfi-rcc59166",
+        warehouse="COMPUTE_WH")
+try:
+    # Create a cursor object
+    cur = conn.cursor()
+
+    # Define the CREATE DATABASE SQL statement
+    sql = "CREATE DATABASE IF NOT EXISTS SCHOOL_RECORDS"
+
+    # Execute the SQL statement
+    cur.execute(sql)
+
+    print("The database creation was a success!")
+
+except Exception as :
+    print(f"Error creating database: {e}")
+
+finally:
+    # Close the cursor and connection
+    cur.close()
+    conn.close()
+
+## Setting my connection to my Snowflake account using the Snowflake.connector to Snowflake and begin importing. We will leave the connection opened so that our ingestion does not get interrupted
+conn = snowflake.connector.connect(
+        user=user_name,
+        password=password,
+        account="dykdcfi-rcc59166",
+        warehouse="COMPUTE_WH",
+        database="SCHOOLS_RECORDS",
+        schema="PUBLIC"
+    )
+## Storing my connection to a variable
+cur = conn.cursor()
+
+Step 5&6) Schema Execution/ Loading dataframes on Snowflake
+## Executing the schema creation for Kennedy
+cur.execute('CREATE TABLE "KENNEDY_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String,"School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Timestamp, "Mobile_access" String, "Transportation" String,"Program_interest_level" String, "Gpa" Float, "Test_score" Integer, "Lunch_status" String,"Guardian_contacted" String, "Learning_style" String)')
+## Writing our dataframe to a table within the Database we created in Snowflake
+
+## Executing the schema creation for Lincoln
+cur.execute('CREATE TABLE "LINCOLN_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String, "School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Timestamp, "Gpa" Float, "Parent_consent" String, "Lunch_status" String,"Guardian_contacted" String, "Language_home" String, "Test_score" Integer, "Iep" String,"Learning_style" String)')
+## Writing our dataframe to a table within the Database we created in Snowflake 
+write_pandas(conn, Linc, table_name='LINCOLN_SCHOOL')
+
+## Executing the schema creation for Roosevelt
+cur.execute('CREATE TABLE "ROOSEVELT_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String, "School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Timestamp, "Test_score" Integer, "Special_needs" String,"Bus_route" String, "Iep" String, "After_school" String, "Lunch_status" String,"Guardian_contacted" String, "Learning_style" String)')
+## Writing our dataframe to a table within the Database we created in Snowflake 
+
+## Executing the schema creation for Jefferson
+cur.execute('CREATE TABLE "JEFFERSON_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String, "School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Timestamp, "Internet_access" String, "Preferred_device" String,"Learning_style" String, "Guardian_income" Varchar(10), "Vaccinated" String, "Guardian_contacted" String,"Language_home" String)')
+## write_pandas(conn, Jeff, table_name='JEFFERSON_SCHOOL')
+
+Step 7) Verify ETL Script success by generating a statistic for a randomly selected school through a Snowflake query
+
+select 
+    "Student_id"
+   ,coalesce("Gender",'Not Given') AS Gender
+   ,"Ethnicity"
+   ,"Test_score"
+   ,ROW_NUMBER() OVER(PARTITION BY "Ethnicity" ORDER BY AVG("Test_score") DESC) AS avg_ethn_score
+    from SCHOOLS_RECORDS.PUBLIC.KENNEDY_SCHOOL
+group by 1,2,3,4
+limit 10
+
+#Success!!!
