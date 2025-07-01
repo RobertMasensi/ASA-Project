@@ -137,6 +137,15 @@ B['Enrollment_date']=pd.to_datetime(B['Enrollment_date'])
 C['Enrollment_date']=pd.to_datetime(C['Enrollment_date'])
 D['Enrollment_date']=pd.to_datetime(D['Enrollment_date'])
 
+# Previous ingestion shows that Snowflake does not recognize "TimestamP" instead we need "Date"
+# we must call our datetime 
+import datetime
+
+Jeff['Enrollment_date']=Jeff['Enrollment_date'].apply(lambda x: x.date())
+Ken['Enrollment_date']=Ken['Enrollment_date'].apply(lambda x: x.date())
+Linc['Enrollment_date']=Linc['Enrollment_date'].apply(lambda x: x.date())
+Roos['Enrollment_date']=Roos['Enrollment_date'].apply(lambda x: x.date())
+
 # All Enrollment_date fields are now properly setup in the right data types for us to standardize them across the dataframes
 A["Enrollment_date"].iloc[0]
 
@@ -235,20 +244,20 @@ cur = conn.cursor()
 
 Step 5&6) Schema Execution/ Loading dataframes on Snowflake
 ## Executing the schema creation for Kennedy
-cur.execute('CREATE TABLE "KENNEDY_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String,"School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Timestamp, "Mobile_access" String, "Transportation" String,"Program_interest_level" String, "Gpa" Float, "Test_score" Integer, "Lunch_status" String,"Guardian_contacted" String, "Learning_style" String)')
+cur.execute('CREATE TABLE "KENNEDY_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String,"School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Date, "Mobile_access" String, "Transportation" String,"Program_interest_level" String, "Gpa" Float, "Test_score" Integer, "Lunch_status" String,"Guardian_contacted" String, "Learning_style" String)')
 ## Writing our dataframe to a table within the Database we created in Snowflake
 
 ## Executing the schema creation for Lincoln
-cur.execute('CREATE TABLE "LINCOLN_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String, "School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Timestamp, "Gpa" Float, "Parent_consent" String, "Lunch_status" String,"Guardian_contacted" String, "Language_home" String, "Test_score" Integer, "Iep" String,"Learning_style" String)')
+cur.execute('CREATE TABLE "LINCOLN_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String, "School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Date, "Gpa" Float, "Parent_consent" String, "Lunch_status" String,"Guardian_contacted" String, "Language_home" String, "Test_score" Integer, "Iep" String,"Learning_style" String)')
 ## Writing our dataframe to a table within the Database we created in Snowflake 
 write_pandas(conn, Linc, table_name='LINCOLN_SCHOOL')
 
 ## Executing the schema creation for Roosevelt
-cur.execute('CREATE TABLE "ROOSEVELT_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String, "School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Timestamp, "Test_score" Integer, "Special_needs" String,"Bus_route" String, "Iep" String, "After_school" String, "Lunch_status" String,"Guardian_contacted" String, "Learning_style" String)')
+cur.execute('CREATE TABLE "ROOSEVELT_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String, "School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Date, "Test_score" Integer, "Special_needs" String,"Bus_route" String, "Iep" String, "After_school" String, "Lunch_status" String,"Guardian_contacted" String, "Learning_style" String)')
 ## Writing our dataframe to a table within the Database we created in Snowflake 
 
 ## Executing the schema creation for Jefferson
-cur.execute('CREATE TABLE "JEFFERSON_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String, "School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Timestamp, "Internet_access" String, "Preferred_device" String,"Learning_style" String, "Guardian_income" Varchar(10), "Vaccinated" String, "Guardian_contacted" String,"Language_home" String)')
+cur.execute('CREATE TABLE "JEFFERSON_SCHOOL" ("Student_id" Varchar(7), "Program_name" String, "Program_id" String, "School_name" String, "Gender" String,"Ethnicity" String, "Enrollment_date" Date, "Internet_access" String, "Preferred_device" String,"Learning_style" String, "Guardian_income" Varchar(10), "Vaccinated" String, "Guardian_contacted" String,"Language_home" String)')
 ## write_pandas(conn, Jeff, table_name='JEFFERSON_SCHOOL')
 
 Step 7) Verify ETL Script success by generating a statistic for a randomly selected school through a Snowflake query
@@ -263,4 +272,4 @@ select
 group by 1,2,3,4
 limit 10
 
-#Success!!!
+Success!!!
